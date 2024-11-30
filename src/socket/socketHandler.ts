@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 
 interface Room {
   id: string;
+  teamName: string;
   users: User[];
 }
 
@@ -9,6 +10,7 @@ interface User {
   id: string;
   name: string;
   vote?: string;
+  isScrumMaster: boolean;
 }
 
 const rooms = new Map<string, Room>();
@@ -17,18 +19,37 @@ export const socketHandler = (io: Server) => {
   io.on('connection', (socket: Socket) => {
     console.log('User connected:', socket.id);
 
-    // Odaya katılma
-    socket.on('joinRoom', ({ roomId, userName }) => {
+    // Scrum Master - Oda Oluşturma
+    socket.on('createRoom', ({ roomId, userName, teamName, isScrumMaster }) => {
       socket.join(roomId);
       
-      if (!rooms.has(roomId)) {
-        rooms.set(roomId, { id: roomId, users: [] });
-      }
-
-      const room = rooms.get(roomId)!;
-      room.users.push({ id: socket.id, name: userName });
+      rooms.set(roomId, {
+        id: roomId,
+        teamName,
+        users: [{
+          id: socket.id,
+          name: userName,
+          isScrumMaster
+        }]
+      });
       
-      io.to(roomId).emit('roomUpdate', room);
+      io.to(roomId).emit('roomUpdate', rooms.get(roomId));
+    });
+
+    // Member - Odaya Katılma
+    socket.on('joinRoom', ({ roomId, userName, isScrumMaster }) => {
+      socket.join(roomId);
+      
+      const room = rooms.get(roomId);
+      if (room) {
+        room.users.push({
+          id: socket.id,
+          name: userName,
+          isScrumMaster
+        });
+        
+        io.to(roomId).emit('roomUpdate', room);
+      }
     });
 
     // Oy verme

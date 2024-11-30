@@ -6,15 +6,32 @@
     <title>Scrum Poker</title>
 </head>
 <body>
-    <div id="join-form">
-        <h2>Join Room</h2>
-        <input type="text" id="room-id" placeholder="Room ID">
+    <!-- Scrum Master Giriş Formu -->
+    <div id="scrum-master-form">
+        <h2>Create New Room (Scrum Master)</h2>
+        <input type="text" id="team-name" placeholder="Team Name">
         <input type="text" id="user-name" placeholder="Your Name">
-        <button onclick="joinRoom()">Join</button>
+        <button onclick="createRoom()">Create Room</button>
     </div>
 
+    <!-- Member Giriş Formu -->
+    <div id="member-form" style="display: none;">
+        <h2>Join Room</h2>
+        <p>Room: <span id="room-id-display"></span></p>
+        <input type="text" id="member-name" placeholder="Your Name">
+        <button onclick="joinAsMember()">Join Room</button>
+    </div>
+
+    <!-- Oda Paylaşım Linki (Sadece Scrum Master görecek) -->
+    <div id="share-link" style="display: none;">
+        <h3>Share this link with your team:</h3>
+        <input type="text" id="room-link" readonly>
+        <button onclick="copyLink()">Copy Link</button>
+    </div>
+
+    <!-- Poker Room (Oyun Alanı) -->
     <div id="poker-room" style="display: none;">
-        <h2>Room: <span id="room-display"></span></h2>
+        <h2>Team: <span id="team-display"></span></h2>
         <div id="users-list"></div>
         <div id="voting-area">
             <button onclick="vote('1')">1</button>
@@ -31,32 +48,106 @@
     <script>
         const socket = io();
         let currentRoom = '';
+        let isScrumMaster = false;
 
-        function joinRoom() {
-            const roomId = document.getElementById('room-id').value;
+        // Sayfa yüklendiğinde URL kontrolü
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomId = urlParams.get('room');
+            
+            if (roomId) {
+                // Member girişi göster
+                currentRoom = roomId;
+                document.getElementById('scrum-master-form').style.display = 'none';
+                document.getElementById('member-form').style.display = 'block';
+                document.getElementById('room-id-display').textContent = roomId;
+            } else {
+                // Scrum Master formu göster
+                document.getElementById('scrum-master-form').style.display = 'block';
+            }
+        };
+
+        // Scrum Master - Oda Oluşturma
+        function createRoom() {
+            const teamName = document.getElementById('team-name').value;
             const userName = document.getElementById('user-name').value;
             
-            if (roomId && userName) {
-                currentRoom = roomId;
-                socket.emit('joinRoom', { roomId, userName });
-                document.getElementById('join-form').style.display = 'none';
-                document.getElementById('poker-room').style.display = 'block';
-                document.getElementById('room-display').textContent = roomId;
+            if (teamName && userName) {
+                // Rastgele room ID oluştur
+                currentRoom = generateRoomId();
+                isScrumMaster = true;
+
+                socket.emit('createRoom', { 
+                    roomId: currentRoom, 
+                    userName, 
+                    teamName,
+                    isScrumMaster: true 
+                });
+
+                // Share link oluştur ve göster
+                const roomLink = `${window.location.origin}?room=${currentRoom}`;
+                document.getElementById('room-link').value = roomLink;
+                document.getElementById('share-link').style.display = 'block';
+                
+                showPokerRoom(teamName);
             }
+        }
+
+        // Member - Odaya Katılma
+        function joinAsMember() {
+            const userName = document.getElementById('member-name').value;
+            
+            if (userName && currentRoom) {
+                socket.emit('joinRoom', { 
+                    roomId: currentRoom, 
+                    userName,
+                    isScrumMaster: false 
+                });
+                
+                showPokerRoom();
+            }
+        }
+
+        // Yardımcı Fonksiyonlar
+        function generateRoomId() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+
+        function showPokerRoom(teamName = '') {
+            document.getElementById('scrum-master-form').style.display = 'none';
+            document.getElementById('member-form').style.display = 'none';
+            document.getElementById('poker-room').style.display = 'block';
+            if (teamName) {
+                document.getElementById('team-display').textContent = teamName;
+            }
+        }
+
+        function copyLink() {
+            const linkInput = document.getElementById('room-link');
+            linkInput.select();
+            document.execCommand('copy');
+            alert('Link copied to clipboard!');
         }
 
         function vote(value) {
             socket.emit('vote', { roomId: currentRoom, vote: value });
         }
 
-        socket.on('roomUpdate', (room) => {
+        // Socket Events
+        socket.on('roomUpdate', (data) => {
             const usersList = document.getElementById('users-list');
             usersList.innerHTML = '';
-            room.users.forEach(user => {
+            
+            data.users.forEach(user => {
                 const userElement = document.createElement('div');
-                userElement.textContent = `${user.name}: ${user.vote || 'Not voted'}`;
+                const roleText = user.isScrumMaster ? ' (Scrum Master)' : '';
+                userElement.textContent = `${user.name}${roleText}: ${user.vote || 'Not voted'}`;
                 usersList.appendChild(userElement);
             });
+
+            if (data.teamName) {
+                document.getElementById('team-display').textContent = data.teamName;
+            }
         });
     </script>
 </body>
