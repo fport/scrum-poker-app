@@ -33,9 +33,19 @@
     <div id="poker-room" style="display: none;">
         <h2>Team: <span id="team-display"></span></h2>
         
-        <!-- Sadece Scrum Master görecek -->
+        <!-- Scrum Master Kontrolleri -->
         <div id="scrum-master-controls" style="display: none;">
+            <div class="task-controls">
+                <input type="text" id="task-input" placeholder="Enter task description">
+                <button onclick="startNewTask()">Start New Task</button>
+            </div>
             <button onclick="toggleVotes()" id="toggle-votes-btn">Show Votes</button>
+        </div>
+
+        <!-- Current Task Display -->
+        <div class="current-task">
+            <h3>Current Task:</h3>
+            <p id="task-display">No active task</p>
         </div>
 
         <div id="users-list"></div>
@@ -49,6 +59,38 @@
             <button onclick="vote('?')">?</button>
         </div>
     </div>
+
+    <style>
+        .task-controls {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .current-task {
+            margin: 15px 0;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+
+        .current-task h3 {
+            margin: 0;
+            color: #495057;
+        }
+
+        #task-display {
+            margin: 5px 0;
+            font-size: 1.1em;
+            color: #212529;
+        }
+
+        .voting-disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    </style>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -149,6 +191,21 @@
             socket.emit('toggleVotes', { roomId: currentRoom });
         }
 
+        function startNewTask() {
+            const taskInput = document.getElementById('task-input');
+            const taskName = taskInput.value.trim();
+            
+            if (taskName) {
+                socket.emit('startNewTask', {
+                    roomId: currentRoom,
+                    taskName
+                });
+                taskInput.value = ''; // Input'u temizle
+            } else {
+                alert('Please enter a task description');
+            }
+        }
+
         // Socket Events
         socket.on('roomUpdate', (data) => {
             const usersList = document.getElementById('users-list');
@@ -160,23 +217,43 @@
                 toggleBtn.textContent = data.showVotes ? 'Hide Votes' : 'Show Votes';
             }
 
+            // Task gösterimini güncelle
+            const taskDisplay = document.getElementById('task-display');
+            taskDisplay.textContent = data.currentTask || 'No active task';
+
+            // Kullanıcı listesini güncelle
             data.users.forEach(user => {
                 const userElement = document.createElement('div');
                 const roleText = user.isScrumMaster ? ' (Scrum Master)' : '';
                 
                 let voteText = 'Not voted';
                 if (user.vote) {
-                    voteText = data.showVotes ? user.vote : '🎯'; // Oy verildi ama gizli
+                    voteText = data.showVotes ? user.vote : '🎯';
                 }
 
                 userElement.textContent = `${user.name}${roleText}: ${voteText}`;
                 usersList.appendChild(userElement);
             });
 
-            if (data.teamName) {
-                document.getElementById('team-display').textContent = data.teamName;
+            // Voting area'yı aktif/pasif yap
+            const votingArea = document.getElementById('voting-area');
+            votingArea.classList.toggle('voting-disabled', !data.currentTask);
+        });
+
+        socket.on('newTaskStarted', (data) => {
+            // Yeni task başladığında bildirim göster
+            const notification = `New task started: ${data.taskName}`;
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(notification);
+            } else {
+                alert(notification);
             }
         });
+
+        // Sayfa yüklendiğinde bildirim izni iste
+        if ('Notification' in window) {
+            Notification.requestPermission();
+        }
     </script>
 </body>
 </html> 

@@ -5,6 +5,7 @@ interface Room {
   teamName: string;
   users: User[];
   showVotes: boolean;
+  currentTask?: string;
 }
 
 interface User {
@@ -28,6 +29,7 @@ export const socketHandler = (io: Server) => {
         id: roomId,
         teamName,
         showVotes: false,
+        currentTask: '',
         users: [{
           id: socket.id,
           name: userName,
@@ -74,6 +76,23 @@ export const socketHandler = (io: Server) => {
         if (user?.isScrumMaster) {
           room.showVotes = !room.showVotes;
           io.to(roomId).emit('roomUpdate', room);
+        }
+      }
+    });
+
+    // Yeni task başlatma
+    socket.on('startNewTask', ({ roomId, taskName }) => {
+      const room = rooms.get(roomId);
+      if (room) {
+        const user = room.users.find(u => u.id === socket.id);
+        if (user?.isScrumMaster) {
+          // Oyları sıfırla ve yeni task'i ayarla
+          room.users.forEach(u => u.vote = undefined);
+          room.showVotes = false;
+          room.currentTask = taskName;
+          
+          io.to(roomId).emit('roomUpdate', room);
+          io.to(roomId).emit('newTaskStarted', { taskName });
         }
       }
     });
