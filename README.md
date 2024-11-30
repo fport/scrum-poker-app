@@ -19,4 +19,6 @@ Eğer hata alırsanız build loglarını kontrol edin:
 
 ```bash
 heroku logs --tail --app your-app-name
+git push heroku main
 ```
+

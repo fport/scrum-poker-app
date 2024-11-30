@@ -32,6 +32,12 @@
     <!-- Poker Room (Oyun Alanı) -->
     <div id="poker-room" style="display: none;">
         <h2>Team: <span id="team-display"></span></h2>
+        
+        <!-- Sadece Scrum Master görecek -->
+        <div id="scrum-master-controls" style="display: none;">
+            <button onclick="toggleVotes()" id="toggle-votes-btn">Show Votes</button>
+        </div>
+
         <div id="users-list"></div>
         <div id="voting-area">
             <button onclick="vote('1')">1</button>
@@ -49,6 +55,7 @@
         const socket = io();
         let currentRoom = '';
         let isScrumMaster = false;
+        let votesVisible = false;
 
         // Sayfa yüklendiğinde URL kontrolü
         window.onload = function() {
@@ -117,6 +124,11 @@
             document.getElementById('scrum-master-form').style.display = 'none';
             document.getElementById('member-form').style.display = 'none';
             document.getElementById('poker-room').style.display = 'block';
+            
+            // Scrum Master kontrollerini göster/gizle
+            document.getElementById('scrum-master-controls').style.display = 
+                isScrumMaster ? 'block' : 'none';
+            
             if (teamName) {
                 document.getElementById('team-display').textContent = teamName;
             }
@@ -133,15 +145,31 @@
             socket.emit('vote', { roomId: currentRoom, vote: value });
         }
 
+        function toggleVotes() {
+            socket.emit('toggleVotes', { roomId: currentRoom });
+        }
+
         // Socket Events
         socket.on('roomUpdate', (data) => {
             const usersList = document.getElementById('users-list');
             usersList.innerHTML = '';
             
+            // Toggle butonunun textini güncelle
+            if (isScrumMaster) {
+                const toggleBtn = document.getElementById('toggle-votes-btn');
+                toggleBtn.textContent = data.showVotes ? 'Hide Votes' : 'Show Votes';
+            }
+
             data.users.forEach(user => {
                 const userElement = document.createElement('div');
                 const roleText = user.isScrumMaster ? ' (Scrum Master)' : '';
-                userElement.textContent = `${user.name}${roleText}: ${user.vote || 'Not voted'}`;
+                
+                let voteText = 'Not voted';
+                if (user.vote) {
+                    voteText = data.showVotes ? user.vote : '🎯'; // Oy verildi ama gizli
+                }
+
+                userElement.textContent = `${user.name}${roleText}: ${voteText}`;
                 usersList.appendChild(userElement);
             });
 
