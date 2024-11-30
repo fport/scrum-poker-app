@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrum Poker</title>
+</head>
+<body>
+    <div id="join-form">
+        <h2>Join Room</h2>
+        <input type="text" id="room-id" placeholder="Room ID">
+        <input type="text" id="user-name" placeholder="Your Name">
+        <button onclick="joinRoom()">Join</button>
+    </div>
+
+    <div id="poker-room" style="display: none;">
+        <h2>Room: <span id="room-display"></span></h2>
+        <div id="users-list"></div>
+        <div id="voting-area">
+            <button onclick="vote('1')">1</button>
+            <button onclick="vote('2')">2</button>
+            <button onclick="vote('3')">3</button>
+            <button onclick="vote('5')">5</button>
+            <button onclick="vote('8')">8</button>
+            <button onclick="vote('13')">13</button>
+            <button onclick="vote('?')">?</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentRoom = '';
+
+        function joinRoom() {
+            const roomId = document.getElementById('room-id').value;
+            const userName = document.getElementById('user-name').value;
+            
+            if (roomId && userName) {
+                currentRoom = roomId;
+                socket.emit('joinRoom', { roomId, userName });
+                document.getElementById('join-form').style.display = 'none';
+                document.getElementById('poker-room').style.display = 'block';
+                document.getElementById('room-display').textContent = roomId;
+            }
+        }
+
+        function vote(value) {
+            socket.emit('vote', { roomId: currentRoom, vote: value });
+        }
+
+        socket.on('roomUpdate', (room) => {
+            const usersList = document.getElementById('users-list');
+            usersList.innerHTML = '';
+            room.users.forEach(user => {
+                const userElement = document.createElement('div');
+                userElement.textContent = `${user.name}: ${user.vote || 'Not voted'}`;
+                usersList.appendChild(userElement);
+            });
+        });
+    </script>
+</body>
+</html> 
