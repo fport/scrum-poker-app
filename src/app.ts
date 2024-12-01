@@ -1,7 +1,7 @@
 import express from 'express';
 import { createServer } from 'http';
-import { Server } from 'socket.io';
 import path from 'path';
+import { Server } from 'socket.io';
 import { socketHandler } from './socket/socketHandler';
 
 const app = express();
@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 }); 

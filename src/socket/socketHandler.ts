@@ -30,11 +30,7 @@ export const socketHandler = (io: Server) => {
         teamName,
         showVotes: false,
         currentTask: '',
-        users: [{
-          id: socket.id,
-          name: userName,
-          isScrumMaster
-        }]
+        users: []
       });
       
       io.to(roomId).emit('roomUpdate', rooms.get(roomId));
@@ -42,6 +38,7 @@ export const socketHandler = (io: Server) => {
 
     // Member - Odaya Katılma
     socket.on('joinRoom', ({ roomId, userName, isScrumMaster }) => {
+      console.log("osman3", roomId, userName, isScrumMaster);
       socket.join(roomId);
       
       const room = rooms.get(roomId);
@@ -56,16 +53,20 @@ export const socketHandler = (io: Server) => {
       }
     });
 
+
     // Oy verme
     socket.on('vote', ({ roomId, vote }) => {
+      console.log(`Vote received for room ${roomId}: ${vote}`);
       const room = rooms.get(roomId);
       if (room) {
         const user = room.users.find(u => u.id === socket.id);
         if (user) {
           user.vote = vote;
           io.to(roomId).emit('roomUpdate', room);
+          return { success: true };
         }
       }
+      return { error: 'Failed to submit vote' };
     });
 
     // Oyları Göster/Gizle
