@@ -2,7 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import path from 'path';
 import { Server } from 'socket.io';
-import { socketHandler } from './socket/socketHandler';
+import { socketHandler, rooms, roomStats } from './socket/socketHandler';
 
 const app = express();
 const httpServer = createServer(app);
@@ -22,6 +22,20 @@ socketHandler(io);
 // Ana sayfa
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// Monitoring endpoint
+app.get('/api/status', (req, res) => {
+  const status = {
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+    activeRooms: rooms.size,
+    roomStats: Object.fromEntries(roomStats),
+    memoryUsage: process.memoryUsage(),
+    nodeVersion: process.version
+  };
+  
+  res.json(status);
 });
 
 const PORT = process.env.PORT || 8080;
