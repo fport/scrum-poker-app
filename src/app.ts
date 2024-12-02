@@ -17,7 +17,7 @@ const httpServer = createServer(app);
 app.use(cors());
 app.use(express.json());
 
-// MongoDB bağlantısı
+// MongoDB connection
 const database = Database.getInstance();
 database.connect(config.mongodb.uri)
   .catch(error => {
@@ -37,7 +37,7 @@ const roomRepository = new MongoRoomRepository();
 const roomService = new RoomService(roomRepository);
 const roomController = new RoomController(roomService);
 
-// Socket.IO sunucusu
+// Socket.IO server
 const io = new Server(httpServer, {
   cors: {
     origin: config.nodeEnv === 'development' ? "*" : process.env.CORS_ORIGIN,
@@ -49,7 +49,7 @@ const io = new Server(httpServer, {
   pingInterval: 60000
 });
 
-// Socket handler'ı başlatma
+// Initialize socket server
 SocketServer.getInstance(io, roomService);
 
 // HTTP routes
@@ -74,7 +74,7 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Sunucuyu başlatma
+// Start server
 httpServer.listen(config.port, () => {
   Logger.info(`Server is running on port ${config.port} in ${config.nodeEnv} mode`);
 });

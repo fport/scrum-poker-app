@@ -15,6 +15,7 @@ export class MongoRoomRepository implements IRoomRepository {
         vote: user.getVote()
       }));
 
+      Logger.info('Saving room:', { roomId: roomData.id, users });
       await RoomModel.findOneAndUpdate(
         { id: roomData.id },
         {
@@ -31,8 +32,12 @@ export class MongoRoomRepository implements IRoomRepository {
 
   async findById(id: string): Promise<Room | null> {
     try {
+      Logger.info('Finding room by ID:', { roomId: id });
       const roomDoc = await RoomModel.findOne({ id });
-      if (!roomDoc) return null;
+      if (!roomDoc) {
+        Logger.info('Room not found:', { roomId: id });
+        return null;
+      }
 
       const users = roomDoc.users.map(u => {
         const user = new User(
@@ -55,6 +60,7 @@ export class MongoRoomRepository implements IRoomRepository {
         roomDoc.lastActivity
       );
 
+      Logger.info('Room found:', { roomId: id, userCount: users.length });
       return room;
     } catch (error) {
       Logger.error('Error finding room:', error);
