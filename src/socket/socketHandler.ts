@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { Logger } from '../utils/logger';
+import { Logger } from '../v2/shared/utils/logger';
 
 interface Room {
   id: string;

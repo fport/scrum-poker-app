@@ -1,8 +1,8 @@
 import { Room } from '../../../../domain/entities/Room';
 import { User } from '../../../../domain/entities/User';
 import { IRoomRepository } from '../../../../domain/repositories/IRoomRepository';
+import { Logger } from '../../../../shared/utils/logger';
 import { RoomModel } from '../models/RoomModel';
-import { Logger } from '../../../../../v1/utils/logger';
 
 export class MongoRoomRepository implements IRoomRepository {
   async save(room: Room): Promise<void> {

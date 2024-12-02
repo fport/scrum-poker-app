@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Logger } from '../../../v1/utils/logger';
+import { Logger } from '../../shared/utils/logger';
 
 export class Database {
   private static instance: Database;

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { RoomService } from '../../../domain/services/RoomService';
-import { Logger } from '../../../../v1/utils/logger';
+import { Logger } from '../../../shared/utils/logger';
 
 export class RoomController {
   constructor(private roomService: RoomService) {}

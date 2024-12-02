@@ -1,8 +1,8 @@
 import { Server, Socket } from 'socket.io';
-import { Logger } from '../../../v1/utils/logger';
-import { RoomService } from '../../domain/services/RoomService';
 import { User } from '../../domain/entities/User';
 import { RoomEventType } from '../../domain/events/RoomEvents';
+import { RoomService } from '../../domain/services/RoomService';
+import { Logger } from '../../shared/utils/logger';
 
 export class SocketServer {
   private static instance: SocketServer;

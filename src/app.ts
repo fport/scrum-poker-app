@@ -2,13 +2,13 @@ import cors from 'cors';
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import { RoomService } from './v2/domain/services/RoomService';
 import { Database } from './v2/infrastructure/database/Database';
 import { MongoRoomRepository } from './v2/infrastructure/database/mongoose/repositories/MongoRoomRepository';
-import { RoomService } from './v2/domain/services/RoomService';
 import { SocketServer } from './v2/infrastructure/socket/SocketServer';
 import { RoomController } from './v2/interfaces/http/controllers/RoomController';
-import { Logger } from './v1/utils/logger';
 import config from './v2/shared/config/config';
+import { Logger } from './v2/shared/utils/logger';
 
 const app = express();
 const httpServer = createServer(app);
