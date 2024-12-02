@@ -8,9 +8,19 @@ export class MongoRoomRepository implements IRoomRepository {
   async save(room: Room): Promise<void> {
     try {
       const roomData = room.toJSON();
+      const users = room.getUsers().map(user => ({
+        id: user.id,
+        name: user.name,
+        isScrumMaster: user.isScrumMaster,
+        vote: user.getVote()
+      }));
+
       await RoomModel.findOneAndUpdate(
         { id: roomData.id },
-        roomData,
+        {
+          ...roomData,
+          users
+        },
         { upsert: true, new: true }
       );
     } catch (error) {
@@ -24,13 +34,17 @@ export class MongoRoomRepository implements IRoomRepository {
       const roomDoc = await RoomModel.findOne({ id });
       if (!roomDoc) return null;
 
-      const users = roomDoc.users.map(u => 
-        new User(
+      const users = roomDoc.users.map(u => {
+        const user = new User(
           u.id || '',
           u.name || '',
           u.isScrumMaster || false
-        )
-      );
+        );
+        if (u.vote) {
+          user.submitVote(u.vote);
+        }
+        return user;
+      });
 
       const room = new Room(
         roomDoc.id,
