@@ -27,11 +27,11 @@ interface RoomStats {
 }
 
 export const socketHandler = (io: Server) => {
-  io.engine.opts.pingTimeout = 10000;
-  io.engine.opts.pingInterval = 5000;
+  io.engine.opts.pingTimeout = 20000;
+  io.engine.opts.pingInterval = 10000;
 
-  const ROOM_CLEANUP_INTERVAL = 1000 * 60 * 30;
-  const ROOM_INACTIVE_THRESHOLD = 1000 * 60 * 60;
+  const ROOM_CLEANUP_INTERVAL = 1000 * 60 * 30; // 30 minutes
+  const ROOM_INACTIVE_THRESHOLD = 1000 * 60 * 60; // 1 hour
 
   setInterval(() => {
     const now = Date.now();
@@ -50,7 +50,29 @@ export const socketHandler = (io: Server) => {
     });
   }, 60000);
 
+  setInterval(() => {
+    Logger.info('Active Connections and Rooms:', {
+      activeConnections: io.engine.clientsCount,
+      connectedSockets: Array.from(io.sockets.sockets.keys()),
+      rooms: Array.from(rooms.entries()).map(([roomId, room]) => ({
+        roomId,
+        userCount: room.users.length,
+        users: room.users.map(u => ({
+          id: u.id,
+          name: u.name,
+          isConnected: io.sockets.sockets.has(u.id)
+        }))
+      }))
+    });
+  }, 5000);
+
   io.on('connection', (socket: Socket) => {
+    Logger.info('New socket connection:', { 
+      socketId: socket.id,
+      totalConnections: io.engine.clientsCount,
+      activeRooms: rooms.size
+    });
+
     const connectionStartTime = Date.now();
     Logger.info('User connected', { socketId: socket.id, timestamp: connectionStartTime });
 
@@ -63,38 +85,37 @@ export const socketHandler = (io: Server) => {
       Logger.debug(`Socket Event Received: ${eventName}`, { socketId: socket.id, args });
     });
 
-    let lastPing = Date.now();
-
-    const pingInterval = setInterval(() => {
-      socket.emit('ping');
-    }, 5000);
-
-    socket.on('pong', () => {
-      lastPing = Date.now();
-    });
-
-    const healthCheck = setInterval(() => {
-      const timeSinceLastPing = Date.now() - lastPing;
-      if (timeSinceLastPing > 15000) {
-        console.log('Connection lost for:', socket.id);
-        socket.disconnect(true);
-        clearInterval(pingInterval);
-        clearInterval(healthCheck);
-      }
-    }, 12000);
-
     socket.on('createRoom', ({ roomId, userName, teamName, isScrumMaster }) => {
+      Logger.debug('Creating room:', { 
+        socketId: socket.id,
+        roomId, 
+        userName, 
+        teamName, 
+        isScrumMaster,
+        existingRooms: Array.from(rooms.keys())
+      });
+      Logger.debug('createRoom event received', { roomId, userName, teamName, isScrumMaster });
       try {
+        if (!roomId || !userName || !teamName) {
+          throw new Error('Missing required fields');
+        }
+
         socket.join(roomId);
         
-        rooms.set(roomId, {
+        const newRoom = {
           id: roomId,
           teamName,
           showVotes: false,
           currentTask: '',
-          users: [],
+          users: [{
+            id: socket.id,
+            name: userName,
+            isScrumMaster
+          }],
           lastActivity: Date.now()
-        });
+        };
+        
+        rooms.set(roomId, newRoom);
 
         roomStats.set(roomId, {
           totalConnections: 1,
@@ -102,11 +123,20 @@ export const socketHandler = (io: Server) => {
           averageResponseTime: 0
         });
         
-        Logger.info('Room created', { roomId, userName, teamName });
-        io.to(roomId).emit('roomUpdate', rooms.get(roomId));
-      } catch (error) {
-        Logger.error('Error creating room', error);
-        socket.emit('error', { message: 'Failed to create room' });
+        Logger.info('Room created successfully', { 
+          roomId, 
+          userName, 
+          teamName,
+          roomData: newRoom 
+        });
+        
+        io.to(roomId).emit('roomUpdate', newRoom);
+      } catch (error: any) {
+        Logger.error('Error creating room', {
+          error,
+          payload: { roomId, userName, teamName, isScrumMaster }
+        });
+        socket.emit('error', { message: 'Failed to create room', details: error.message });
       }
     });
 
@@ -197,15 +227,20 @@ export const socketHandler = (io: Server) => {
         lastActivity
       });
 
-      clearInterval(pingInterval);
-      clearInterval(healthCheck);
-      
       rooms.forEach((room, roomId) => {
-        room.users = room.users.filter(u => u.id !== socket.id);
-        if (room.users.length === 0) {
-          rooms.delete(roomId);
-        } else {
-          io.to(roomId).emit('roomUpdate', room);
+        const userIndex = room.users.findIndex(u => u.id === socket.id);
+        if (userIndex !== -1) {
+          setTimeout(() => {
+            const room = rooms.get(roomId);
+            if (room) {
+              room.users = room.users.filter(u => u.id !== socket.id);
+              if (room.users.length === 0) {
+                rooms.delete(roomId);
+              } else {
+                io.to(roomId).emit('roomUpdate', room);
+              }
+            }
+          }, 5000);
         }
       });
     });
